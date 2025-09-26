@@ -1,50 +1,66 @@
-from server.ModelUser import User
+from ModelUser import User
+
 
 import mysql.connector
 
 
 
 class UserController:
-  __user = None
   __connect = None
 
 
-  def __init__(
-      self,
-      hostname:str="127.0.0.1",
-      username:str="root",
-      passwd:str=""
-  ):
-    try:
-      con = mysql.connector.connect(
-        host=hostname
-        user=username,
-        password=passwd,
-        database="db_passwd_manager"
-      )
-      print("Connection successful!")
+  def __init__(self, hostname:str="127.0.0.1", username:str="root", passwd:str=""):
+    con = mysql.connector.connect(
+      host=hostname,
+      user=username,
+      password=passwd,
+      database="db_passwd_manager"
+    )
+    print("Connection successful!")
 
-      self.__connect = con
-    except mysql.connector.Error as err:
-      print(f"Error connecting to MySQL: {err}")
-      return None
+    self.__connect = con
 
-  def __exec_query(self, query:str) -> bool:
+
+  def __exec_query(self, query:str) -> list:
     try:
       cur = self.__connect.cursor()
       cur.execute(query)
-      result = cur.fetchall()
-      print(f"Query result ({len(result)} arrows):")
-      for x in result:
-        print(x)
-        
-      return True
+      result:list = cur.fetchall()
+
+      return result
     except mysql.connector.Error as err:
-      return False
+      print(f"Query error: {err}")
+      return None
     
 
-  def set_user(self, user: User) -> None:
-    self.__user = user
+  def get_user_by_login(self, login:str) -> User:
+    user: User = User()
+    query:str = f"""
+    SELECT 
+          cred.login, 
+          cred.passwd, 
+          ud.full_name,
+          ud.position,
+          ur.role
+    FROM `credentials` AS cred
+    JOIN `user_data` AS ud
+    ON ud.login = cred.login
+    JOIN `user_roles` AS ur
+    ON ur.login = cred.login
+    WHERE cred.login = "{login}"
+    """
+
+    result = self.__exec_query(query)
+
+    if (result is not None):
+      user.setLogin     (result[0][0])
+      user.setPasswd    (result[0][1])
+      user.setFullName  (result[0][2])
+      user.setPosition  (result[0][3])
+      user.setRole      (result[0][4])
+
+    return user
+
 
   def update_password(
       self,  
@@ -55,12 +71,12 @@ class UserController:
     
     upd_query: str = f"""
     UPDATE `credentials` AS cred
-    SET cred.passwd = {new_password}
-    WHERE cred.login  = {login}
-    AND   cred.passwd = {old_password}
+    SET cred.passwd = "{new_password}"
+    WHERE cred.login  = "{login}"
+    AND   cred.passwd = "{old_password}"
     """
 
-    return self.__exec_query(upd_query)
+    return ( self.__exec_query(upd_query) is not None)
     
   def add_user(self, user: User) -> bool:
     insert_query: str = f"""
@@ -71,5 +87,17 @@ class UserController:
       "{user.getPosition()}",
       "{user.getRole()}"
     );"""
-    return self.__exec_query(insert_query)
+    return ( self.__exec_query(insert_query) is not None)
+  
+  def check_user(self, user: User) -> bool:
+    query:str = f"""
+    SELECT cred.login 
+    FROM `credentials` AS cred
+    WHERE cred.login = "{user.getLogin()}"
+    AND cred.passwd  = "{user.getPasswd()}";
+    """
+
+    return ( self.__exec_query(query) is not None)
+    # return ( len(result) > 0 )
+        
   
