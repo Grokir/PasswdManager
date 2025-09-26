@@ -1,4 +1,4 @@
-from ModelUser import User
+from server.ModelUser import User
 
 import mysql.connector
 
@@ -11,9 +11,9 @@ class UserController:
 
   def __init__(
       self,
-      hostname="127.0.0.1",
-      username="root",
-      passwd=""
+      hostname:str="127.0.0.1",
+      username:str="root",
+      passwd:str=""
   ):
     try:
       con = mysql.connector.connect(
@@ -54,7 +54,7 @@ class UserController:
   ) -> bool:
     
     upd_query: str = f"""
-    UPDATE db_passwd_manager.credentials AS cred
+    UPDATE `credentials` AS cred
     SET cred.passwd = {new_password}
     WHERE cred.login  = {login}
     AND   cred.passwd = {old_password}
@@ -64,16 +64,12 @@ class UserController:
     
   def add_user(self, user: User) -> bool:
     insert_query: str = f"""
-    INSERT INTO db_passwd_manager.credentials 
-    (login, passwd) VALUE ("{user.getLogin()}", "{user.getPasswd()}")
-    """
-
+    SELECT `ADD_NEW_USER`(
+      "{user.getLogin()}", 
+      "{user.getPasswd()}",
+      "{user.getFullName()}",
+      "{user.getPosition()}",
+      "{user.getRole()}"
+    );"""
     return self.__exec_query(insert_query)
   
-  def add_user(self, user: User) -> bool:
-  insert_query: str = f"""
-  INSERT INTO db_passwd_manager.credentials 
-  (login, passwd) VALUE ("{user.getLogin()}", "{user.getPasswd()}")
-  """
-
-  return self.__exec_query(insert_query)
