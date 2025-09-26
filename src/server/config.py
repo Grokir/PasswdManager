@@ -1,5 +1,9 @@
 
-# server port
+# server params
 HOST        = "127.0.0.1"
 PORT        = 3333
-DB_PASSWORD = "<your password for database>"
+
+# DB params
+DB_PASSWORD = "<your password>"
+DB_HOST     = "127.0.0.1"
+DB_USER     = "root"
