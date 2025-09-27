@@ -4,11 +4,14 @@ from tkinter import messagebox
 import re
 from string import punctuation
 
+from receiver import Receiver
+
 
 class GUI_APP:
   __window          = None
   __entry_username  = None
   __entry_password  = None
+  __receiver        = Receiver()
 
   def __init__(self, window_size:str = "300x250") -> None:
     # Создание главного окна
@@ -50,27 +53,42 @@ class GUI_APP:
     password = self.__entry_password.get()
     # Логика входа (можно расширить)
     if username and password:
-      messagebox.showinfo("Успех", f"Вход выполнен для пользователя: {username}")
+      if self.__passwd_check_correct(password):
+        data:dict = {
+          "login": username,
+          "password": password
+        }
+        res_str:str = self.__receiver.POST(data)
+        if res_str == "ok":
+          messagebox.showinfo("Успех", f"Вход выполнен для пользователя: {username}")
+        else:
+          messagebox.showerror("Ошибка", res_str)
+      else:
+        messagebox.showerror("Ошибка", 
+          "Некорректный пароль! Пароль должен быть длиной не менее 8 символов и содержать символы A-Z, a-z, 0-9 и спец. символы"
+        )
+
     else:
       messagebox.showerror("Ошибка", "Пожалуйста, введите логин и пароль")
 
   def __cancel(self):
     self.__window.quit()
 
-  def show_data(self):
+  def __show_data(self):
     username = self.__entry_username.get()
     password = self.__entry_password.get()
+
+    messagebox.showinfo("Проверка", f"Вы ввели:\nЛогин: {username},\nПароль: {password}", icon="info")
     
-    return username, password
   
   def __passwd_check_correct(self, password: str) -> bool:
     """
     returns True if the password characters 
     belong to a set of characters {A-Z, a-z, 
-    special characters, and numbers}. 
+    special characters, and numbers} and password len = 8. 
     And returns False otherwise.
     """
     regex: str = "^[a-zA-Z" + str(punctuation) + "0-9]"
     pattern = re.compile(regex)
-    return (pattern.search(password) is not None)
+    return ( (pattern.search(password) is not None) and (len(password) >= 8) )
 
