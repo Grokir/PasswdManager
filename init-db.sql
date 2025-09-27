@@ -5,9 +5,11 @@ INSERT INTO `credentials` VALUE ("admin", "P@s5W0rD");
 DELETE FROM user_data;
 INSERT INTO `credentials` (login, passwd) VALUE ("test_user", "test_user_pasword");
 
+DELETE FROM user_data where login = "IvanovPP@example.org"; 
+
 SELECT `ADD_NEW_USER`(
     "IvanovPP@example.org", 
-    "P@s5w0rD_AdM1n",
+    "87fdd2e5d24a5e380a16dd7e40a1638b6c630aa683939d8b9fd0e8631ff9fcbf",
     "Иванов Пётр Петрович", 
     "Главный системный администратор",
     "admin"
