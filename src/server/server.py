@@ -1,6 +1,7 @@
 from config import HOST, PORT, DB_PASSWORD, DB_HOST, DB_USER, LOG_PATH
 from ModelUser import User
 from ControllerUser import *
+import hash
 
 from logger import Logger
 
@@ -17,6 +18,21 @@ class HTTPHandler(BaseHTTPRequestHandler):
         passwd=DB_PASSWORD
     )
     __logger: Logger = Logger(path_to_logfile=LOG_PATH)
+
+
+    def __check_password(self, user: User) -> bool:
+        bits: int = 16
+        
+        for i in range(2**bits):
+            bit_str = f"{i:0{bits}b}"
+            byte_str = int(bit_str, 2).to_bytes((bits // 8), 'big')
+            tmp_passwd = bytes(user.getPasswd(), encoding="utf-8") + byte_str
+            user.setPasswd(hash.hash_passwd(tmp_passwd))
+           
+            if self.__uController.check_user(user):
+                return True
+
+        return False
 
 
     def __set_response(self, resp_code:int=200):
@@ -61,7 +77,7 @@ class HTTPHandler(BaseHTTPRequestHandler):
             )
             self.__logger.send(f"User from {self.client_address[0]}:{self.client_address[1]} try connect with creds '{user.getLogin()}:{user.getPasswd()}'")
 
-            if (self.__uController.check_user(user)):   
+            if (self.__check_password(user)):
                 message = {
                     "status":"ok"
                 }
