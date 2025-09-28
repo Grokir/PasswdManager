@@ -1,5 +1,7 @@
-from ModelUser import User
+from sys import path as sys_path
+sys_path.append("../Model")
 
+from Model.User import User
 
 import mysql.connector
 
@@ -23,7 +25,7 @@ class UserController:
 
   def __exec_query(self, query:str) -> list:
     try:
-      cur = self.__connect.cursor()
+      cur: MySQLCursorAbstract = self.__connect.cursor()
       cur.execute(query)
       result:list = cur.fetchall()
 

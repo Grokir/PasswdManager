@@ -13,5 +13,13 @@ class Receiver:
     
     return res["status"]
     
+  def GET(self, dataJSON:dict):
+    resp: Response = requests.get(f"http://{HOST}:{PORT}/", json=dataJSON)
+    res:dict = resp.json()
+    
+    if res["status"] == "error":
+      return res["message"]
+    
+    return res["user_data"]
 
 

@@ -25,7 +25,7 @@ SELECT `ADD_NEW_USER`(
 
 SELECT `ADD_NEW_USER`(
     "ProstovIA@example.org", 
-    "654#Pr0stoV#321",
+    "599a9f9fad4fbdbbdeee7323e8752a9e9ffdd57e259a0f6dccd862d1c7970254",
     "Простов Иван Александрович", 
     "Работник финансового отдела",
     "user"

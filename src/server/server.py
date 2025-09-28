@@ -1,6 +1,6 @@
 from config import HOST, PORT, DB_PASSWORD, DB_HOST, DB_USER, LOG_PATH
-from ModelUser import User
-from ControllerUser import *
+from Model.User import User
+from Controller.UserController import *
 import hash
 
 from logger import Logger
@@ -8,14 +8,14 @@ from logger import Logger
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import json
 # import cgi
- 
+
 
 
 class HTTPHandler(BaseHTTPRequestHandler):
     __uController: UserController = UserController(
-        hostname=DB_HOST,
-        username=DB_USER,
-        passwd=DB_PASSWORD
+        hostname = DB_HOST,
+        username = DB_USER,
+        passwd   = DB_PASSWORD
     )
     __logger: Logger = Logger(path_to_logfile=LOG_PATH)
 
@@ -50,17 +50,31 @@ class HTTPHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         message = {
-            "status":"ok"
+            "status": "ok"
         }
         response_code = 200
         print("\n\n[GET]")
         if self.headers['content-type'] == "application/json":
-            data_length:int = int(self.headers['content-length'])
-            user_data: dict = dict(json.loads(self.rfile.read(data_length)))
-            user_login:str = user_data["login"]
-            user: User = self.__uController.get_user_by_login(user_login)
-            
-        
+            data_length:int  = int(self.headers['content-length'])
+            user_data:  dict = dict(json.loads(self.rfile.read(data_length)))
+            user_login: str  = user_data["login"]
+            user:       User = self.__uController.get_user_by_login(user_login)
+            user_json:  dict = {
+                "login":     user.getLogin(),
+                "full_name": user.getFullName(),
+                "position":  user.getPosition(),
+                "role":      user.getRole()
+            }
+            message["user_data"] = user_json
+            self.__logger.send(f"User from {self.client_address[0]}:{self.client_address[1]} get user_data by login '{user.getLogin()}'")
+        else:
+            message = {
+                "status":"error",
+                "message":"bad format of input data"
+            }
+            response_code = 400
+            self.__logger.send(f"An uncorrected POST request was received from {self.client_address[0]}:{self.client_address[1]}")
+          
         self.__set_response_JSON(response_code, message)
 
 
