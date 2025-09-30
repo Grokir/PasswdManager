@@ -19,7 +19,8 @@ class GUI_APP:
   __entry_password  = None
   __receiver        = Receiver()
 
-  __activity: dict  = {
+  __current_user: dict = {}
+  __activity:     dict = {
     "admin":      False,
     "super_user": False,
     "user" :      False,
@@ -76,13 +77,20 @@ class GUI_APP:
           "login": username,
           "password": password
         }
-        res_str:str = self.__receiver.POST(data)
-        if res_str == "ok":
-          res = self.__receiver.GET({"login": username})
-          messagebox.showinfo("Успех", f"Вход выполнен для пользователя: {username}")
-          self.__change_frame(res["role"])
-        else:
-          messagebox.showerror("Ошибка", res_str)
+
+        try:
+
+          res_str:str = self.__receiver.POST(data)
+          if res_str == "ok":
+            self.__current_user = self.__receiver.GET({"login": username})
+            messagebox.showinfo("Успех", f"Вход выполнен для пользователя: {username}")
+            self.__change_frame(self.__current_user["role"])
+          else:
+            messagebox.showerror("Ошибка", res_str)
+        except Exception as e:
+          print(e.args)
+          exc_str = str(e)
+          messagebox.showerror("Ошибка", "Ошибка подключения к серверу")
       else:
         messagebox.showerror("Ошибка", 
           "Некорректный пароль! Пароль должен быть длиной не менее 8 символов и содержать символы A-Z, a-z, 0-9 и спец. символы"
@@ -172,18 +180,12 @@ class GUI_APP:
     button_show = tk.Button(self.__login_frame, text="Показать данные", command=self.__show_data)
     button_show.pack(pady=10)
 
-    # обновляем экран
-    # self.__window.update()
-    # self.__window.update_idletasks()
 
   def __init_admin_panel(self) -> None:
-
     def load_table_data():
       self.__receiver
-
       for item in self.__tree.get_children():
             self.__tree.delete(item)
-
       # Пример: получаем данные из Receiver (адаптируйте под ваш API)
       try:
         login:str = self.__entry_username.get()
