@@ -45,6 +45,48 @@ class HTTPHandler(BaseHTTPRequestHandler):
         self.send_header('Content-Type', 'application/json')
         self.end_headers()
         self.wfile.write(bytes(json.dumps(dataJSON), 'utf-8'))
+    
+    def __get_data_curr_user(self) -> tuple[dict, str]:
+        data_length:int  = int(self.headers['content-length'])
+        user_data:  dict = dict(json.loads(self.rfile.read(data_length)))
+        user_login: str  = user_data["login"]
+        user:       User = self.__uController.get_user_by_login(user_login)
+        user_json:  dict = {
+            "login":     user.getLogin(),
+            "full_name": user.getFullName(),
+            "position":  user.getPosition(),
+            "role":      user.getRole()
+        }
+        return user_json, user.getLogin()
+    
+    def __get_data_all_users(self) -> tuple[dict, str]:
+        data_length:int  = int(self.headers['content-length'])
+        user_data:  dict = dict(json.loads(self.rfile.read(data_length)))
+        user_login: str  = user_data["login"]
+        user:       User = self.__uController.get_user_by_login(user_login)
+        user_json:  list = []
+
+        if user.getRole() == user_data["role"]:
+            for u in self.__uController.get_all_users():
+                if user.getRole() != "admin":
+                    user_json.append(
+                        {
+                            "login":     u.getLogin(),
+                            "full_name": u.getFullName(),
+                            "position":  u.getPosition()
+                        }
+                    )
+                else:
+                    user_json.append(
+                        {
+                            "login":     u.getLogin(),
+                            "full_name": u.getFullName(),
+                            "position":  u.getPosition(),
+                            "role":      u.getRole()
+                        }
+                    )
+
+        return user_json, user.getLogin()
 
     # def __get_all_users(self) -> dict:
 
@@ -53,20 +95,18 @@ class HTTPHandler(BaseHTTPRequestHandler):
             "status": "ok"
         }
         response_code = 200
-        print("\n\n[GET]")
+        print(f"\n\n[GET {self.path}]")
         if self.headers['content-type'] == "application/json":
-            data_length:int  = int(self.headers['content-length'])
-            user_data:  dict = dict(json.loads(self.rfile.read(data_length)))
-            user_login: str  = user_data["login"]
-            user:       User = self.__uController.get_user_by_login(user_login)
-            user_json:  dict = {
-                "login":     user.getLogin(),
-                "full_name": user.getFullName(),
-                "position":  user.getPosition(),
-                "role":      user.getRole()
-            }
-            message["user_data"] = user_json
-            self.__logger.send(f"User from {self.client_address[0]}:{self.client_address[1]} get user_data by login '{user.getLogin()}'")
+            user_json = ""
+            login_by_request = ""
+            if self.path == "/":
+                user_json, login_by_request = self.__get_data_curr_user()
+            
+            if self.path == "/all_users":
+                user_json, login_by_request = self.__get_data_all_users()
+            print(user_json)
+            message["user_data"] = json.dumps(user_json)
+            self.__logger.send(f"User from {self.client_address[0]}:{self.client_address[1]} get user_data by login '{login_by_request}'")
         else:
             message = {
                 "status":"error",
@@ -114,20 +154,9 @@ class HTTPHandler(BaseHTTPRequestHandler):
         self.__set_response_JSON(response_code, message)
         
      
-
-        
-        
-        
         
 
-
-if __name__ == "__main__":
-    
-  server = HTTPServer((HOST, PORT), HTTPHandler)
-  print(" >  Server now running...")
-  server.serve_forever()
-  server.server_close()
-  print(" >  Server stopped!")
-
-            
-
+def run() -> None:     
+    server = HTTPServer((HOST, PORT), HTTPHandler)
+    server.serve_forever()
+    server.server_close()
