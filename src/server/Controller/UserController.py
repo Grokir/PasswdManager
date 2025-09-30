@@ -102,4 +102,14 @@ class UserController:
     return ( self.__exec_query(query) is not None)
     # return ( len(result) > 0 )
         
-  
+  def get_all_users(self) -> list:
+    query:str = f"""
+    SELECT login
+    FROM `credentials`
+    """
+    user_list: list = []
+    result = self.__exec_query(query)
+    if (result is not None):
+      user_list = [ self.get_user_by_login(result[i][0]) for i in range(len(result)) ]
+
+    return user_list
