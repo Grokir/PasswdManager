@@ -1,8 +1,12 @@
 from logger import Logger
+import server
+
+
 
 def main():
-  log: Logger = Logger("./")
-  log.send("test message!")
+  print(" >  Server now running...")
+  server.run()
+  print(" >  Server stopped!")
 
 
 if __name__ == "__main__":
