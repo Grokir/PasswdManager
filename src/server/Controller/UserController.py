@@ -35,7 +35,7 @@ class UserController:
       return None
     
 
-  def get_user_by_login(self, login:str) -> User:
+  def get_user_by_login(self, login:str) -> tuple[User, None]:
     user: User = User()
     query:str = f"""
     SELECT 
@@ -54,7 +54,7 @@ class UserController:
 
     result = self.__exec_query(query)
 
-    if (result is not None):
+    if (len(result) > 0):
       user.setLogin     (result[0][0])
       user.setPasswd    (result[0][1])
       user.setFullName  (result[0][2])
@@ -99,7 +99,7 @@ class UserController:
     AND cred.passwd  = "{user.getPasswd()}";
     """
 
-    return ( self.__exec_query(query) is not None)
+    return ( self.__exec_query(query) is not None ) 
     # return ( len(result) > 0 )
         
   def get_all_users(self) -> list:
