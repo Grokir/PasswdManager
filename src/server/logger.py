@@ -12,3 +12,6 @@ class Logger:
   def send(self, message:str) -> None:
     with open(self.__logfile, 'a') as lf:
       lf.write(f"[{self.__timer.now()}] '{message}'\n")
+  
+  def get_path(self) -> str:
+    return self.__logfile

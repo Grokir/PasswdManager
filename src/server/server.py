@@ -52,14 +52,14 @@ class HTTPHandler(BaseHTTPRequestHandler):
         user_login: str  = user_data["login"]
         user:       User = self.__uController.get_user_by_login(user_login)
         user_json:  dict = {
-            "login":     user.getLogin(),
-            "full_name": user.getFullName(),
-            "position":  user.getPosition(),
-            "role":      user.getRole()
+            "login":     str(user.getLogin()),
+            "full_name": str(user.getFullName()),
+            "position":  str(user.getPosition()),
+            "role":      str(user.getRole())
         }
         return user_json, user.getLogin()
     
-    def __get_data_all_users(self) -> tuple[dict, str]:
+    def __get_data_all_users(self) -> tuple[list, str]:
         data_length:int  = int(self.headers['content-length'])
         user_data:  dict = dict(json.loads(self.rfile.read(data_length)))
         user_login: str  = user_data["login"]
@@ -68,27 +68,40 @@ class HTTPHandler(BaseHTTPRequestHandler):
 
         if user.getRole() == user_data["role"]:
             for u in self.__uController.get_all_users():
-                if user.getRole() != "admin":
+                if user.getRole() == "super_user":
                     user_json.append(
                         {
-                            "login":     u.getLogin(),
-                            "full_name": u.getFullName(),
-                            "position":  u.getPosition()
+                            "login":     str(u.getLogin()),
+                            "full_name": str(u.getFullName()),
+                            "position":  str(u.getPosition())
                         }
                     )
-                else:
+                elif user.getRole() == "admin":
                     user_json.append(
                         {
-                            "login":     u.getLogin(),
-                            "full_name": u.getFullName(),
-                            "position":  u.getPosition(),
-                            "role":      u.getRole()
+                            "login":     str(u.getLogin()),
+                            "full_name": str(u.getFullName()),
+                            "position":  str(u.getPosition()),
+                            "role":      str(u.getRole())
                         }
                     )
 
         return user_json, user.getLogin()
 
-    # def __get_all_users(self) -> dict:
+    def __get_logs(self) -> tuple[list, str]:
+        data_length:int  = int(self.headers['content-length'])
+        user_data:  dict = dict(json.loads(self.rfile.read(data_length)))
+        user_login: str  = user_data["login"]
+        user:       User = self.__uController.get_user_by_login(user_login)
+        log_json:   list = []
+
+        if user.getRole() == user_data["role"]:
+            if user.getRole() == "admin":
+                with open(self.__logger.get_path(), 'r') as rf:
+                    log_json = rf.readlines()
+
+        return log_json, user.getLogin()
+    
 
     def do_GET(self):
         message = {
@@ -97,15 +110,19 @@ class HTTPHandler(BaseHTTPRequestHandler):
         response_code = 200
         print(f"\n\n[GET {self.path}]")
         if self.headers['content-type'] == "application/json":
-            user_json = ""
+            resp_json = ""
             login_by_request = ""
-            if self.path == "/":
-                user_json, login_by_request = self.__get_data_curr_user()
+            if self.path in ["/", "/all_users"]:
+                if self.path == "/all_users":
+                    resp_json, login_by_request = self.__get_data_all_users()
+                else:
+                    resp_json, login_by_request = self.__get_data_curr_user()
+                message["user_data"] = json.dumps(resp_json)
+            elif self.path == "/logs":
+                resp_json, login_by_request = self.__get_logs()
+                message["logs"] = json.dumps(resp_json)
             
-            if self.path == "/all_users":
-                user_json, login_by_request = self.__get_data_all_users()
-            print(user_json)
-            message["user_data"] = json.dumps(user_json)
+            print(resp_json)
             self.__logger.send(f"User from {self.client_address[0]}:{self.client_address[1]} get user_data by login '{login_by_request}'")
         else:
             message = {
@@ -153,7 +170,7 @@ class HTTPHandler(BaseHTTPRequestHandler):
             
         self.__set_response_JSON(response_code, message)
         
-     
+    
         
 
 def run() -> None:     
