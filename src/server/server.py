@@ -122,7 +122,6 @@ class HTTPHandler(BaseHTTPRequestHandler):
                 resp_json, login_by_request = self.__get_logs()
                 message["logs"] = json.dumps(resp_json)
             
-            print(resp_json)
             self.__logger.send(f"User from {self.client_address[0]}:{self.client_address[1]} get user_data by login '{login_by_request}'")
         else:
             message = {

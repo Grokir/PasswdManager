@@ -4,6 +4,7 @@ sys_path.append("../Model")
 from Model.User import User
 
 import mysql.connector
+from mysql.connector.cursor import MySQLCursorAbstract
 
 
 
@@ -23,7 +24,7 @@ class UserController:
     self.__connect = con
 
 
-  def __exec_query(self, query:str) -> list:
+  def __exec_query(self, query:str) -> tuple[list, None]:
     try:
       cur: MySQLCursorAbstract = self.__connect.cursor()
       cur.execute(query)
@@ -35,7 +36,7 @@ class UserController:
       return None
     
 
-  def get_user_by_login(self, login:str) -> tuple[User, None]:
+  def get_user_by_login(self, login:str) -> User:
     user: User = User()
     query:str = f"""
     SELECT 
