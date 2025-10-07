@@ -50,7 +50,7 @@ class UserController:
     ON ud.login = cred.login
     JOIN `user_roles` AS ur
     ON ur.login = cred.login
-    WHERE cred.login = "{login}"
+    WHERE cred.login = "{login}";
     """
 
     result = self.__exec_query(query)
@@ -68,18 +68,26 @@ class UserController:
   def update_password(
       self,  
       login: str,
-      old_password: str,
       new_password: str
   ) -> bool:
+      # old_password: str,
     
     upd_query: str = f"""
     UPDATE `credentials` AS cred
-    SET cred.passwd = "{new_password}"
-    WHERE cred.login  = "{login}"
-    AND   cred.passwd = "{old_password}"
+    SET   cred.passwd = "{new_password}"
+    WHERE cred.login  = "{login}";
     """
+    # AND   cred.passwd = "{old_password}";
 
-    return ( self.__exec_query(upd_query) is not None)
+    # self.__exec_query(upd_query)
+
+    cur: MySQLCursorAbstract = self.__connect.cursor()
+    cur.execute(upd_query)
+    self.__connect.commit()
+
+    result = cur.rowcount
+
+    return ( result > 0 )
     
   def add_user(self, user: User) -> bool:
     insert_query: str = f"""
@@ -90,7 +98,7 @@ class UserController:
       "{user.getPosition()}",
       "{user.getRole()}"
     );"""
-    return ( self.__exec_query(insert_query) is not None)
+    return ( len(self.__exec_query(insert_query)) > 0 )
   
   def check_user(self, user: User) -> bool:
     query:str = f"""
@@ -100,13 +108,12 @@ class UserController:
     AND cred.passwd  = "{user.getPasswd()}";
     """
 
-    return ( self.__exec_query(query) is not None ) 
-    # return ( len(result) > 0 )
+    return ( len(self.__exec_query(query)) > 0 )
         
   def get_all_users(self) -> list:
     query:str = f"""
     SELECT login
-    FROM `credentials`
+    FROM `credentials`;
     """
     user_list: list = []
     result = self.__exec_query(query)
