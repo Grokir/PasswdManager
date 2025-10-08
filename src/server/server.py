@@ -189,10 +189,10 @@ class HTTPHandler(BaseHTTPRequestHandler):
             
         self.__set_response_JSON(response_code, message)
         
-    def do_PUT(self):
+    def do_PATCH(self):
         message = {}
         response_code = 200
-        print("\n\n[PUT]")
+        print("\n\n[PATCH]")
         if self.headers['content-type'] == "application/json":
             data_length:int = int(self.headers['content-length'])
             json_data: dict = dict(json.loads(self.rfile.read(data_length)))
@@ -220,8 +220,7 @@ class HTTPHandler(BaseHTTPRequestHandler):
                         }
 
                         self.__logger.send(
-                            f"User with login '{user.getLogin()}' successful update password \
-                            for '{upd_data["login"]}' to '{upd_data["new_password"]}'"
+                            f"User with login '{user.getLogin()}' successful update password for '{upd_data["login"]}' to '{upd_data["new_password"]}'"
                         )
                     else:
                         message = {
@@ -240,6 +239,143 @@ class HTTPHandler(BaseHTTPRequestHandler):
                     self.__logger.send(f"Update FAIL: access denied to update data")
 
 
+
+            else:
+                message = {
+                    "status":"error",
+                    "message":"incorrect login or password"
+                }
+                response_code = 400
+                self.__logger.send(f"Verify FAIL: incorrect login or password")
+            
+        else:
+            message = {
+                "status":"error",
+                "message":"bad format of input data"
+            }
+            response_code = 400
+            self.__logger.send(f"An uncorrected POST request was received from {self.client_address[0]}:{self.client_address[1]}")
+            
+        self.__set_response_JSON(response_code, message)
+
+
+    def do_PUT(self):
+        message = {}
+        response_code = 200
+        print("\n\n[PUT]")
+        if self.headers['content-type'] == "application/json":
+            data_length:int = int(self.headers['content-length'])
+            json_data: dict = dict(json.loads(self.rfile.read(data_length)))
+            add_data:  dict = json_data["add_data"]
+
+            user: User = User(
+                username=json_data["login"],
+                password=json_data["password"]
+            )
+
+            self.__logger.send(f"User from {self.client_address[0]}:{self.client_address[1]} with creds '{user.getLogin()}:{user.getPasswd()}' try ADD new user")
+
+            if (self.__check_password(user)):
+                self.__logger.send(f"User verify SUCCESS")
+
+                user = self.__uController.get_user_by_login(user.getLogin())
+                if user.getRole() == "admin":
+                    hash_password: str = self.__hash_password(add_data["password"])
+                    add_user: User = User(
+                        username    =   add_data["login"],
+                        password    =   hash_password,
+                        full_name   =   add_data["full_name"],
+                        position    =   add_data["position"],
+                        role        =   add_data["role"]
+                    )
+                    if self.__uController.add_user(add_user) :
+                        message = {
+                            "status":"ok"
+                        }
+
+                        self.__logger.send(
+                            f"User with login '{user.getLogin()}' successful add new user with login '{add_user.getLogin()}' and role '{add_user.getRole()}'"
+                        )
+                    else:
+                        message = {
+                            "status":"error",
+                            "message":"add new user is fail"
+                        }
+                        self.__logger.send(
+                            f"User with login '{user.getLogin()}' failure add new user with login '{add_user.getLogin()}' and role '{add_user.getRole()}'"
+                        )
+                else:
+                    message = {
+                        "status":"error",
+                        "message":"access denied to add new user"
+                    }
+                    response_code = 400
+                    self.__logger.send("ADD new user FAIL: access denied to add new user")
+
+            else:
+                message = {
+                    "status":"error",
+                    "message":"incorrect login or password"
+                }
+                response_code = 400
+                self.__logger.send(f"Verify FAIL: incorrect login or password")
+            
+        else:
+            message = {
+                "status":"error",
+                "message":"bad format of input data"
+            }
+            response_code = 400
+            self.__logger.send(f"An uncorrected POST request was received from {self.client_address[0]}:{self.client_address[1]}")
+            
+        self.__set_response_JSON(response_code, message)
+
+
+    def do_DELETE(self):
+        message = {}
+        response_code = 200
+        print("\n\n[DELETE]")
+        if self.headers['content-type'] == "application/json":
+            data_length:int = int(self.headers['content-length'])
+            json_data: dict = dict(json.loads(self.rfile.read(data_length)))
+            del_data:  dict = json_data["del_data"]
+
+            user: User = User(
+                username=json_data["login"],
+                password=json_data["password"]
+            )
+
+            self.__logger.send(f"User from {self.client_address[0]}:{self.client_address[1]} with creds '{user.getLogin()}:{user.getPasswd()}' try DELETE user")
+
+            if (self.__check_password(user)):
+                self.__logger.send(f"User verify SUCCESS")
+
+                user = self.__uController.get_user_by_login(user.getLogin())
+                if user.getRole() == "admin":
+  
+                    if self.__uController.del_user(del_data["login"]):
+                        message = {
+                            "status":"ok"
+                        }
+
+                        self.__logger.send(
+                            f"User with login '{user.getLogin()}' successful delete user with login '{del_data["login"]}'"
+                        )
+                    else:
+                        message = {
+                            "status":"error",
+                            "message":"add new user is fail"
+                        }
+                        self.__logger.send(
+                            f"User with login '{user.getLogin()}' failure delete user with login '{del_data["login"]}'"
+                        )
+                else:
+                    message = {
+                        "status":"error",
+                        "message":"access denied to delete user"
+                    }
+                    response_code = 400
+                    self.__logger.send("DELETE user FAIL: access denied to delete user")
 
             else:
                 message = {

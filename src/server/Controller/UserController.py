@@ -77,10 +77,7 @@ class UserController:
     SET   cred.passwd = "{new_password}"
     WHERE cred.login  = "{login}";
     """
-    # AND   cred.passwd = "{old_password}";
-
-    # self.__exec_query(upd_query)
-
+    
     cur: MySQLCursorAbstract = self.__connect.cursor()
     cur.execute(upd_query)
     self.__connect.commit()
@@ -90,15 +87,34 @@ class UserController:
     return ( result > 0 )
     
   def add_user(self, user: User) -> bool:
-    insert_query: str = f"""
-    SELECT `ADD_NEW_USER`(
-      "{user.getLogin()}", 
-      "{user.getPasswd()}",
-      "{user.getFullName()}",
-      "{user.getPosition()}",
-      "{user.getRole()}"
-    );"""
-    return ( len(self.__exec_query(insert_query)) > 0 )
+    insert_queries: list = [
+      f"INSERT INTO `user_data`     VALUES (\"{user.getLogin()}\", \"{user.getFullName()}\", \"{user.getPosition()}\");",
+      f"INSERT INTO `credentials`   VALUES (\"{user.getLogin()}\", \"{user.getPasswd()}\");",
+      f"INSERT INTO `user_roles`    VALUES (\"{user.getLogin()}\", \"{user.getRole()}\");"
+    ]
+    res_query: list = []
+    
+    cur: MySQLCursorAbstract = self.__connect.cursor()
+
+    for q in insert_queries:
+      cur.execute(q)
+      self.__connect.commit()
+      res_query.append(cur.rowcount)
+
+    return ( 0 not in res_query )
+  
+  def del_user(self, delete_login: str) -> bool:
+    delete_query: str = f"""
+    DELETE FROM `user_data` where login = "{delete_login}";
+    """
+    cur: MySQLCursorAbstract = self.__connect.cursor()
+    cur.execute(delete_query)
+    self.__connect.commit()
+
+    result = cur.rowcount
+
+    return ( result > 0 )
+
   
   def check_user(self, user: User) -> bool:
     query:str = f"""
