@@ -44,7 +44,7 @@ class GUI_APP:
     self.__init_admin_panel()
     self.__init_super_user_panel()
     self.__init_user_panel()
-    # self.__init_guest_panel()
+    self.__init_guest_panel()
 
 
 
@@ -52,7 +52,6 @@ class GUI_APP:
   def run(self):
     # Запуск главного цикла
     self.__window.mainloop()
-
 
 
 
@@ -72,8 +71,7 @@ class GUI_APP:
         panel = self.__user_panel
         self.__activity_frame["user"] = True
       case "guest":
-        # panel = self.__guest_panel
-        panel = self.__user_panel
+        panel = self.__guest_panel
         self.__activity_frame["guest"] = True
     
     self.__login_frame.pack_forget()
@@ -85,32 +83,38 @@ class GUI_APP:
     password = self.__entry_password.get()
     # Логика входа (можно расширить)
     if username and password:
-      if self.__passwd_check_correct(password):
-        data:dict = {
-          "login": username,
-          "password": password
-        }
-        res_str:str = ""
-        try:
+      if self.__login_check_correct(username):
+        if self.__passwd_check_correct(password):
+          messagebox.showinfo("Инфо", "Осуществляем вход в систему...\nЭто может занять какое-то время.")
+          data:dict = {
+            "login": username,
+            "password": password
+          }
+          res_str:str = ""
+          try:
 
-          res_str = self.__receiver.login(data)
+            res_str = self.__receiver.login(data)
 
-        except Exception as e:
-          print(e.args)
-          exc_str = str(e)
-          # messagebox.showerror("Ошибка", "Ошибка подключения к серверу")
-          messagebox.showerror("Ошибка", exc_str)
-        
-        if res_str == "ok":
-          self.__current_user = self.__receiver.GET_current_user({"login": username})
-          messagebox.showinfo("Успех", f"Вход выполнен для пользователя: {username}")
-          self.__current_user["password"] = password
-          self.__change_frame(str(self.__current_user["role"]))
+          except Exception as e:
+            print(e.args)
+            exc_str = str(e)
+            # messagebox.showerror("Ошибка", "Ошибка подключения к серверу")
+            messagebox.showerror("Ошибка", exc_str)
+          
+          if res_str == "ok":
+            self.__current_user = self.__receiver.get_current_user({"login": username})
+            messagebox.showinfo("Успех", f"Вход выполнен для пользователя: {username}")
+            self.__current_user["password"] = password
+            self.__change_frame(str(self.__current_user["role"]))
+          else:
+            messagebox.showerror("Ошибка", res_str)
         else:
-          messagebox.showerror("Ошибка", res_str)
+          messagebox.showerror("Ошибка", 
+            "Некорректный пароль! Пароль должен быть длиной не менее 8 символов и содержать символы A-Z, a-z, 0-9 и спец. символы"
+          )
       else:
         messagebox.showerror("Ошибка", 
-          "Некорректный пароль! Пароль должен быть длиной не менее 8 символов и содержать символы A-Z, a-z, 0-9 и спец. символы"
+          "Некорректный логин! Логин должен содержать '@example.org', т.е. Вы должны иметь корпоративную почту."
         )
 
     else:
@@ -136,20 +140,18 @@ class GUI_APP:
         panel = self.__admin_panel
         self.__activity_frame["admin"] = False
       case "super_user":
-        # panel = self.__suser_panel
         panel = self.__suser_panel
         self.__activity_frame["super_user"] = False
       case "user":
         panel = self.__user_panel
         self.__activity_frame["user"] = False
       case "guest":
-        # panel = self.__guest_panel
-        panel = self.__user_panel
+        panel = self.__guest_panel
         self.__activity_frame["guest"] = False
 
     # Возвращаемся к авторизации: скрываем рабочий фрейм и показываем логин
     panel.pack_forget()
-    self.__login_frame.pack(fill=tk.BOTH, expand=True)
+    self.__login_frame.pack(fill=tk.Y, expand=True)
 
     # Очищаем поля
     self.__entry_username.delete(0, tk.END)
@@ -171,34 +173,236 @@ class GUI_APP:
     pattern = re.compile(regex)
     return ( (pattern.search(password) is not None) and (len(password) >= 8) )
   
+  def __login_check_correct(self, login: str) -> bool:
+    """
+    returns True if the login have postfix <@example.org> 
+    and login len > len of postfix. 
+    And returns False otherwise.
+    """
+    postfix: str = "@example.org"
+    return ( (postfix in login) and (len(login) > len(postfix)) )
+
+  
   def __init_login_panel(self) -> None:
     self.__activity_frame["login"] = True
 
     self.__login_frame = tk.Frame(self.__window)
-    self.__login_frame.pack(fill=tk.BOTH, expand=True)
+    self.__login_frame.pack(fill=tk.Y, expand=True)
+
+    username_frame = tk.Frame(self.__login_frame)
+    username_frame.pack(side=tk.TOP, fill=tk.X, expand=True)
+
+    password_frame = tk.Frame(username_frame)
+    password_frame.pack(side=tk.BOTTOM, fill=tk.X, expand=True)
+
+    buttons_frame = tk.Frame(self.__login_frame)
+    buttons_frame.pack(side=tk.BOTTOM, fill=tk.X, expand=True)
+
 
     # Метка и поле для логина
-    label_username = tk.Label(self.__login_frame, text="Логин:")
-    label_username.pack(pady=5)
-    self.__entry_username = tk.Entry(self.__login_frame)
-    self.__entry_username.pack(pady=5)
+    label_username = tk.Label(username_frame, text="Логин: ")
+    label_username.pack(side=tk.LEFT, pady=5)
+    self.__entry_username = tk.Entry(username_frame, width=50)
+    self.__entry_username.pack(side=tk.RIGHT, pady=5)
 
     # Метка и поле для пароля
-    label_password = tk.Label(self.__login_frame, text="Пароль:")
-    label_password.pack(pady=5)
-    self.__entry_password = tk.Entry(self.__login_frame, show="\u00B7")
-    self.__entry_password.pack(pady=5)
+    label_password = tk.Label(password_frame, text="Пароль:")
+    label_password.pack(side=tk.LEFT, pady=5)
+    self.__entry_password = tk.Entry(password_frame, show="*", width=50)
+    self.__entry_password.pack(side=tk.RIGHT, pady=5)
 
     # Кнопки
-    button_login = tk.Button(self.__login_frame, text="Войти", command=self.__login)
+    button_login = tk.Button(buttons_frame, text="Войти", command=self.__login)
     button_login.pack(side=tk.LEFT, padx=10, pady=10)
+    
+    # Новая кнопка для демонстрации получения данных
+    button_show = tk.Button(buttons_frame, text="Показать данные", command=self.__show_data)
+    button_show.pack(side=tk.LEFT, pady=10)
 
-    button_cancel = tk.Button(self.__login_frame, text="Отмена", command=self.__cancel)
+    # Кнопка отмены входа в систему (она же выход)
+    button_cancel = tk.Button(buttons_frame, text="Отмена", command=self.__cancel)
     button_cancel.pack(side=tk.RIGHT, padx=10, pady=10)
 
-    # Новая кнопка для демонстрации получения данных
-    button_show = tk.Button(self.__login_frame, text="Показать данные", command=self.__show_data)
-    button_show.pack(pady=10)
+  def __admin_add_user_window(self):
+    # Создаем новое окно
+    change_window = tk.Toplevel(self.__window)
+    change_window.title("Добавление пользователя")
+    change_window.geometry("600x600")
+    change_window.resizable(False, False)
+
+    # Фрейм для формы внутри окна
+    frame = tk.Frame(change_window)
+    frame.pack(pady=20, padx=20)
+
+    label_title = tk.Label(frame, text="Добавление пользователя", font=("Arial", 14))
+    label_title.pack(pady=10)
+
+    # Поле для логина
+    label_login = tk.Label(frame, text="Логин пользователя:")
+    label_login.pack(anchor=tk.W)
+    entry_login = tk.Entry(frame, width=70)
+    entry_login.pack(pady=2)
+
+    # Поле для нового пароля
+    label_password = tk.Label(frame, text="Пароль:")
+    label_password.pack(anchor=tk.W)
+    entry_password = tk.Entry(frame, show="*", width=70)
+    entry_password.pack(pady=2)
+
+    # Поле для подтверждения пароля
+    label_confirm_password = tk.Label(frame, text="Подтвердите пароль:")
+    label_confirm_password.pack(anchor=tk.W)
+    entry_confirm_password = tk.Entry(frame, show="*", width=70)
+    entry_confirm_password.pack(pady=2)
+
+    # Поле для ФИО
+    label_full_name = tk.Label(frame, text="ФИО:")
+    label_full_name.pack(anchor=tk.W)
+    entry_full_name = tk.Entry(frame, width=70)
+    entry_full_name.pack(pady=2)
+
+    # Поле для Должности
+    label_position = tk.Label(frame, text="Должность:")
+    label_position.pack(anchor=tk.W)
+    entry_position = tk.Entry(frame, width=70)
+    entry_position.pack(pady=2)
+
+    # Поле для Роли
+    label_role = tk.Label(frame, text="Роль:")
+    label_role.pack(anchor=tk.W)
+    entry_role = tk.StringVar()
+    combobox_role = ttk.Combobox(frame, textvariable=entry_role)
+    combobox_role['values'] = ["admin", "super_user", "user", "guest"]
+    combobox_role.pack(pady=2)
+    
+    def add_user(window):
+      login             :str = entry_login            .get()
+      password          :str = entry_password         .get()
+      confirm_password  :str = entry_confirm_password .get()
+      full_name         :str = entry_full_name        .get()
+      position          :str = entry_position         .get()
+      role              :str = entry_role             .get()
+
+      if (not login             or 
+          not password          or 
+          not confirm_password  or 
+          not position          or
+          not role
+      ):
+        messagebox.showerror("Ошибка", "Все поля обязательны для заполнения.")
+        return
+      
+      if not self.__login_check_correct(login):
+        messagebox.showerror("Ошибка", 
+          "Некорректный логин! Логин должен содержать '@example.org'."
+        )
+        return
+
+      if password != confirm_password:
+        messagebox.showerror("Ошибка", "Пароли не совпадают.")
+        return
+      
+      if not self.__passwd_check_correct(password):
+        messagebox.showerror("Ошибка", 
+          "Некорректный пароль! Пароль должен быть длиной не менее 8 символов и содержать символы A-Z, a-z, 0-9 и спец. символы"
+        )
+        return
+         
+
+      # Здесь вызовите ваш API для изменения пароля
+      # Предполагаем, что у вас есть метод self.__receiver.change_password(login, new_password, current_user_info)
+      try:
+          result = self.__receiver.add_user({
+              "login":    self.__current_user["login"],
+              "password": self.__current_user["password"],
+              "add_data": {
+                  "login":      login,
+                  "password":   password,
+                  "full_name":  full_name,
+                  "position":   position,
+                  "role":       role
+              }
+          })
+          if result == "ok":
+              messagebox.showinfo("Успех", "Пользователь успешно добавлен.")
+              # Очистить поля
+              entry_login.delete(0, tk.END)
+              entry_password.delete(0, tk.END)
+              entry_confirm_password.delete(0, tk.END)
+          else:
+              messagebox.showerror("Ошибка", result)
+      except Exception as e:
+          messagebox.showerror("Ошибка", f"Не удалось добавить пользователя: {e}")
+
+    # Кнопка изменения пароля
+    button_change = tk.Button(frame, text="Добавить пользователя", command=lambda: add_user(change_window))
+    button_change.pack(pady=10)
+
+    # Кнопка отмены
+    button_cancel = tk.Button(frame, text="Отмена", command=change_window.destroy)
+    button_cancel.pack()
+
+  def __admin_del_user_window(self):
+    # Создаем новое окно
+    change_window = tk.Toplevel(self.__window)
+    change_window.title("Удаление пользователя")
+    change_window.geometry("600x600")
+    change_window.resizable(False, False)
+
+    # Фрейм для формы внутри окна
+    frame = tk.Frame(change_window)
+    frame.pack(pady=20, padx=20)
+
+    label_title = tk.Label(frame, text="Удаление пользователя", font=("Arial", 14))
+    label_title.pack(pady=10)
+
+    # Поле для логина
+    label_login = tk.Label(frame, text="Логин пользователя:")
+    label_login.pack(anchor=tk.W)
+    entry_login = tk.Entry(frame, width=70)
+    entry_login.pack(pady=2)
+
+    
+    def del_user(window):
+      login             :str = entry_login            .get()
+
+      if not login:
+        messagebox.showerror("Ошибка", "Поле 'Логин' не заполнено")
+        return
+
+      if not self.__login_check_correct(login):
+        messagebox.showerror("Ошибка", 
+          "Некорректный логин! Логин должен содержать '@example.org'."
+        )
+        return
+
+      # Здесь вызовите ваш API для изменения пароля
+      # Предполагаем, что у вас есть метод self.__receiver.change_password(login, new_password, current_user_info)
+      try:
+          result = self.__receiver.del_user({
+              "login":    self.__current_user["login"],
+              "password": self.__current_user["password"],
+              "del_data": {
+                  "login": login
+              }
+          })
+          if result == "ok":
+              messagebox.showinfo("Успех", "Пользователь успешно УВОЛЕН! >:).")
+              # Очистить поля
+              entry_login.delete(0, tk.END)
+          else:
+              messagebox.showerror("Ошибка", result)
+      except Exception as e:
+          messagebox.showerror("Ошибка", f"Не удалось добавить пользователя: {e}")
+
+    # Кнопка изменения пароля
+    button_change = tk.Button(frame, text="Удалить пользователя", command=lambda: del_user(change_window))
+    button_change.pack(pady=10)
+
+    # Кнопка отмены
+    button_cancel = tk.Button(frame, text="Отмена", command=change_window.destroy)
+    button_cancel.pack()
+
 
 
   def __admin_chg_passwd_window(self):
@@ -349,10 +553,12 @@ class GUI_APP:
     def load_table_user_data():
       if self.__activity_frame["admin_tree2"]:
         self.__admin_tree2.pack_forget()
+        self.__scrollbar2.pack_forget()
         self.__activity_frame["admin_tree2"] = False
 
       # отрисуем таблицу и выведем данные
-      self.__admin_tree1.pack(fill=tk.BOTH, expand=True)
+      self.__admin_tree1.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+      self.__scrollbar1.pack(side=tk.LEFT, fill=tk.Y)
       self.__activity_frame["admin_tree1"] = True
       
       for item in self.__admin_tree1.get_children():
@@ -360,7 +566,7 @@ class GUI_APP:
       # Пример: получаем данные из Receiver (адаптируйте под ваш API)
       try:
         # login:str = self.__entry_username.get()
-        data_dict = self.__receiver.GET_all_users(
+        data_dict = self.__receiver.get_all_users(
           {
             "login": self.__current_user["login"], 
             "role":  self.__current_user["role"]
@@ -390,10 +596,12 @@ class GUI_APP:
         # закроем другое дерево, если оно активно
         if self.__activity_frame["admin_tree1"]:
             self.__admin_tree1.pack_forget()
+            self.__scrollbar1.pack_forget()
             self.__activity_frame["admin_tree1"] = False
 
         # отрисуем таблицу и выведем данные
-        self.__admin_tree2.pack(fill=tk.BOTH, expand=True)
+        self.__admin_tree2.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.__scrollbar2.pack(side=tk.LEFT, fill=tk.Y)
         self.__activity_frame["admin_tree2"] = True
 
         for item in self.__admin_tree2.get_children():
@@ -401,7 +609,7 @@ class GUI_APP:
         # Пример: получаем данные из Receiver (адаптируйте под ваш API)
         try:
             # login:str = self.__entry_username.get()
-            data_list = self.__receiver.GET_logs(
+            data_list = self.__receiver.get_logs(
                 {
                     "login": self.__current_user["login"], 
                     "role":  self.__current_user["role"]
@@ -420,50 +628,96 @@ class GUI_APP:
         if self.__activity_frame["admin_tree1"]:
             self.__admin_tree1.pack_forget()
             self.__activity_frame["admin_tree1"] = False
+            self.__scrollbar1.pack_forget()
 
         if self.__activity_frame["admin_tree2"]:
             self.__admin_tree2.pack_forget()
             self.__activity_frame["admin_tree2"] = False
+            self.__scrollbar2.pack_forget()
 
         # self.__scrollbar.pack_forget()
+
+    def print_data():
+      messagebox.showinfo(
+       "Информация", 
+       f"Вы Админ\nЛогин: {self.__current_user["login"]},\n" + 
+        f"ФИО: {self.__current_user["full_name"]}\n" + 
+        f"Должность: {self.__current_user["position"]}", 
+       icon="info"
+      )
 
 
     self.__admin_panel = tk.Frame(self.__window)
 
-    header_frame = tk.Frame(self.__admin_panel)
-
+    header_frame: tk.Frame                 = tk.Frame(self.__admin_panel)
     header_frame.pack(side=tk.TOP, fill=tk.X, padx=10, pady=10)
 
-    label_user_info = tk.Label(header_frame, text=f"admin", font=("Arial", 16), fg="blue")
-    label_user_info.pack(side=tk.RIGHT)
+    user_data_buttons_frame: tk.Frame      = tk.Frame(self.__admin_panel)
+    user_data_buttons_frame.pack(side=tk.TOP, fill=tk.X, padx=10, pady=10)
 
-    label_welcome = tk.Label(self.__admin_panel, text="", font=("Arial", 16))
-    label_welcome.pack(pady=50)
+    table_buttons_frame: tk.Frame          = tk.Frame(self.__admin_panel)
+    table_buttons_frame.pack(side=tk.TOP, fill=tk.X, padx=10, pady=10)
+
+    table_frame: tk.Frame                  = tk.Frame(self.__admin_panel)
+    table_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+
+
+    button_logout: tk.Button               = tk.Button(
+      header_frame, text="Выход", command=self.__logout
+    )
+    button_logout.pack(side=tk.RIGHT, padx=10)
+
+    button_print_data:tk.Button            = tk.Button(
+      header_frame, text="Показать данные пользователя", command=print_data
+    )
+    button_print_data.pack(side=tk.RIGHT, padx=10, pady=10)
+
 
     # Пример элементов рабочей панели (можно добавить больше)
-    # button_action1 = tk.Button(self.__admin_panel, text="Действие 1", command=lambda: messagebox.showinfo("Действие", "Выполнено действие 1"))
-    button_action1 = tk.Button(self.__admin_panel, text="Получить список работников", command=load_table_user_data)
-    button_action1.pack(pady=10)
+    button_users_list: tk.Button           = tk.Button(
+      table_buttons_frame, text="Получить список работников", command=load_table_user_data
+    )
+    button_users_list.pack(side=tk.LEFT, padx=10, pady=10)
 
-    button_action2 = tk.Button(self.__admin_panel, text="Показать логи", command=load_table_log_data)
-    button_action2.pack(pady=10)
 
-    button_close_tables = tk.Button(self.__admin_panel, text="Закрыть панель", command=close_tables)
-    button_close_tables.pack(pady=10)
+    button_logs: tk.Button                 = tk.Button(
+      table_buttons_frame, text="Показать логи", command=load_table_log_data
+    )
+    button_logs.pack(side=tk.LEFT,padx=10, pady=10)
 
-    button_open_change_password = tk.Button(self.__admin_panel, text="Изменить пароль пользователя", command=self.__admin_chg_passwd_window)
-    button_open_change_password.pack(pady=10)
 
-    button_logout = tk.Button(self.__admin_panel, text="Выход", command=self.__logout)
-    button_logout.pack(pady=20)
+    button_close_tables: tk.Button         = tk.Button(
+      table_buttons_frame, text="Закрыть панель", command=close_tables
+    )
+    button_close_tables.pack(side=tk.RIGHT, pady=10)
+    
+
+    button_open_change_password: tk.Button = tk.Button(
+      user_data_buttons_frame, text="Изменить пароль пользователя", command=self.__admin_chg_passwd_window
+    )
+    button_open_change_password.pack(side=tk.LEFT, pady=10)
+
+
+    button_add_user: tk.Button             = tk.Button(
+      user_data_buttons_frame, text="Добавить нового пользователя", command=self.__admin_add_user_window
+    )
+    button_add_user.pack(side=tk.LEFT, pady=10)
+
+
+    button_del_user: tk.Button             = tk.Button(
+      user_data_buttons_frame, text="Удалить пользователя", command=self.__admin_del_user_window
+    )
+    button_del_user.pack(side=tk.LEFT, pady=10)
+
+
 
 
 # Создаём фрейм для таблицы
-    table_frame = tk.Frame(self.__admin_panel)
-    table_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-
     # Создаём Treeview (таблицу) с столбцами
-    self.__admin_tree1 = ttk.Treeview(table_frame, columns=("login", "ФИО", "Должность", "Роль"), show="headings")
+    self.__admin_tree1: ttk.Treeview       = ttk.Treeview(
+      table_frame, columns=("login", "ФИО", "Должность", "Роль"), show="headings"
+    )
 
     # Определяем заголовки столбцов
     self.__admin_tree1.heading("login", text="login")
@@ -478,12 +732,16 @@ class GUI_APP:
     self.__admin_tree1.column("Роль", width=100)
 
     # Добавляем scrollbar для прокрутки
-    self.__scrollbar = ttk.Scrollbar(table_frame, orient=tk.VERTICAL, command=self.__admin_tree1.yview)
-    self.__admin_tree1.configure(yscroll=self.__scrollbar.set)
+    self.__scrollbar1: ttk.Scrollbar        = ttk.Scrollbar(
+      table_frame, orient=tk.VERTICAL, command=self.__admin_tree1.yview
+    )
+    self.__admin_tree1.configure(yscroll=self.__scrollbar1.set)
 
     
 
-    self.__admin_tree2 = ttk.Treeview(table_frame, columns=("Дата и Время", "Сообщение"), show="headings")
+    self.__admin_tree2: ttk.Treeview       = ttk.Treeview(
+      table_frame, columns=("Дата и Время", "Сообщение"), show="headings"
+    )
 
     # Определяем заголовки столбцов
     self.__admin_tree2.heading("Дата и Время", text="Дата и Время")
@@ -493,16 +751,11 @@ class GUI_APP:
     self.__admin_tree2.column("Дата и Время", width=100)
     self.__admin_tree2.column("Сообщение", width=500)
 
+    self.__scrollbar2: ttk.Scrollbar        = ttk.Scrollbar(
+      table_frame, orient=tk.VERTICAL, command=self.__admin_tree2.yview
+    )
     # Добавляем scrollbar для прокрутки
-    self.__admin_tree2.configure(yscroll=self.__scrollbar.set)
-    self.__scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
-    # Кнопка для обновления таблицы
-    # button_refresh = tk.Button(self.__admin_panel, text="Обновить таблицу", command=load_table_data)
-    # button_refresh.pack(pady=10)
-
-    # Загружаем данные при инициализации панели
-    # self.load_table_data()
+    self.__admin_tree2.configure(yscroll=self.__scrollbar2.set)
 
 
 
@@ -514,15 +767,15 @@ class GUI_APP:
 
       # отрисуем таблицу и выведем данные
       self.__su_tree.pack(fill=tk.BOTH, expand=True)
-      self.__activity_frame["su_tree"] = True
       self.__scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+      self.__activity_frame["su_tree"] = True
       
       for item in self.__su_tree.get_children():
             self.__su_tree.delete(item)
       # Пример: получаем данные из Receiver (адаптируйте под ваш API)
       try:
         # login:str = self.__entry_username.get()
-        data_dict = self.__receiver.GET_all_users(
+        data_dict = self.__receiver.get_all_users(
           {
             "login": self.__current_user["login"], 
             "role":  self.__current_user["role"]
@@ -543,44 +796,61 @@ class GUI_APP:
     def close_tables():
       if self.__activity_frame["su_tree"]:
         self.__su_tree.pack_forget()
-        self.__activity_frame["su_tree"] = False
         self.__scrollbar.pack_forget()
+        self.__activity_frame["su_tree"] = False
 
-    self.__suser_panel = tk.Frame(self.__window)
+    self.__suser_panel: tk.Frame             = tk.Frame(self.__window)
 
-    header_frame = tk.Frame(self.__suser_panel)
+    header_frame: tk.Frame                   = tk.Frame(self.__suser_panel)
+    header_frame.pack(side=tk.TOP, fill=tk.X, padx=10, pady=2)
 
-    header_frame.pack(side=tk.TOP, fill=tk.X, padx=10, pady=10)
+    passwd_button_frame: tk.Frame            = tk.Frame(self.__suser_panel, height=20)
+    passwd_button_frame.pack(fill=tk.X, expand=True)
 
-    label_user_info = tk.Label(header_frame, text=f"super user", font=("Arial", 16), fg="blue")
-    label_user_info.pack(side=tk.RIGHT)
+    table_buttons_frame: tk.Frame            = tk.Frame(passwd_button_frame, height=50)
+    table_buttons_frame.pack(side=tk.BOTTOM, fill=tk.X, expand=True)
 
-    label_welcome = tk.Label(self.__suser_panel, text="", font=("Arial", 16))
-    label_welcome.pack(pady=50)
+    table_frame: tk.Frame                    = tk.Frame(self.__suser_panel)
+    table_frame.pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True, padx=10, pady=5)
 
-    # Пример элементов рабочей панели (можно добавить больше)
-    # button_action1 = tk.Button(self.__admin_panel, text="Действие 1", command=lambda: messagebox.showinfo("Действие", "Выполнено действие 1"))
-    button_action1 = tk.Button(self.__suser_panel, text="Получить список работников", command=load_table_user_data)
-    button_action1.pack(pady=10)
+    
 
-    button_close_tables = tk.Button(self.__suser_panel, text="Закрыть панель", command=close_tables)
-    button_close_tables.pack(pady=10)
+    button_logout: tk.Button                 = tk.Button(header_frame, text="Выход", command=self.__logout)
+    button_logout.pack(side=tk.RIGHT, fill=tk.Y, padx=10)
+    
+    button_print_data: tk.Button             = tk.Button(
+      header_frame, text="Показать данные пользователя", command=lambda: messagebox.showinfo(
+        "Информация", 
+        f"Вы Привилегированный Пользователь\nЛогин: {self.__current_user["login"]},\n" + 
+        f"ФИО: {self.__current_user["full_name"]}\n" + 
+        f"Должность: {self.__current_user["position"]}", 
+        icon="info"
+      )
+    )
+    button_print_data.pack(side=tk.RIGHT, padx=10)
+
+    button_open_change_password: tk.Button   = tk.Button(
+      passwd_button_frame, text="Изменить пароль пользователя", command=self.__own_chg_passwd_window
+    )
+    button_open_change_password.pack(side=tk.RIGHT, padx=10)
 
 
-    button_open_change_password = tk.Button(self.__suser_panel, text="Изменить пароль пользователя", command=self.__own_chg_passwd_window)
-    button_open_change_password.pack(pady=10)
-
-
-    button_logout = tk.Button(self.__suser_panel, text="Выход", command=self.__logout)
-    button_logout.pack(pady=20)
-
+    button_close_tables: tk.Button           = tk.Button(
+      table_buttons_frame, text="Закрыть панель", command=close_tables
+    )
+    button_close_tables.pack(side=tk.RIGHT, padx=10)
+    
+    button_users_list: tk.Button             = tk.Button(
+      table_buttons_frame, text="Получить список работников", command=load_table_user_data
+    )
+    button_users_list.pack(side=tk.RIGHT, padx=10)
 
 # Создаём фрейм для таблицы
-    table_frame = tk.Frame(self.__suser_panel)
-    table_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
     # Создаём Treeview (таблицу) с столбцами
-    self.__su_tree = ttk.Treeview(table_frame, columns=("login", "ФИО", "Должность", "Роль"), show="headings")
+    self.__su_tree: ttk.Treeview             = ttk.Treeview(
+      table_frame, columns=("login", "ФИО", "Должность", "Роль"), show="headings"
+    )
 
     # Определяем заголовки столбцов
     self.__su_tree.heading("login", text="login")
@@ -595,43 +865,59 @@ class GUI_APP:
     self.__su_tree.column("Роль", width=100)
 
     # Добавляем scrollbar для прокрутки
-    self.__scrollbar = ttk.Scrollbar(table_frame, orient=tk.VERTICAL, command=self.__su_tree.yview)
+    self.__scrollbar: ttk.Scrollbar          = ttk.Scrollbar(
+      table_frame, orient=tk.VERTICAL, command=self.__su_tree.yview
+    )
     self.__su_tree.configure(yscroll=self.__scrollbar.set)
 
 
-
-    # Кнопка для обновления таблицы
-    # button_refresh = tk.Button(self.__admin_panel, text="Обновить таблицу", command=load_table_data)
-    # button_refresh.pack(pady=10)
-
-    # Загружаем данные при инициализации панели
-    # self.load_table_data()
-
-
-
+#############################################################################
 
 
   def __init_user_panel(self) -> None:
     self.__user_panel = tk.Frame(self.__window)
 
     header_frame = tk.Frame(self.__user_panel)
-
     header_frame.pack(side=tk.TOP, fill=tk.X, padx=10, pady=10)
 
-    label_user_info = tk.Label(header_frame, text="user", font=("Arial", 14), fg="blue")
-    label_user_info.pack(side=tk.RIGHT)
-
-    label_welcome = tk.Label(self.__user_panel, text="", font=("Arial", 14))
-    label_welcome.pack(pady=50)
+    button_logout = tk.Button(header_frame, text="Выход", command=self.__logout)
+    button_logout.pack(side=tk.RIGHT, padx=10)
 
     # Пример элементов рабочей панели (можно добавить больше)
-    button_action1 = tk.Button(self.__user_panel, text="Действие 1", command=lambda: messagebox.showinfo("Действие", "Выполнено действие 1"))
-    button_action1.pack(pady=10)
+    button_print_data = tk.Button(header_frame, text="Показать данные пользователя", command=lambda: messagebox.showinfo(
+       "Информация", 
+       f"Вы Привилегированный Пользователь\nЛогин: {self.__current_user["login"]},\n" + 
+       f"ФИО: {self.__current_user["full_name"]}\n" + 
+       f"Должность: {self.__current_user["position"]}", 
+       icon="info"
+      )
+    )
+    button_print_data.pack(side=tk.RIGHT, padx=10)
 
     button_open_change_password = tk.Button(self.__user_panel, text="Изменить пароль пользователя", command=self.__own_chg_passwd_window)
     button_open_change_password.pack(pady=10)
 
-    button_logout = tk.Button(self.__user_panel, text="Выход", command=self.__logout)
-    button_logout.pack(pady=20)
+
+#############################################################################
+
+
+  def __init_guest_panel(self) -> None:
+    self.__guest_panel = tk.Frame(self.__window)
+
+    header_frame = tk.Frame(self.__guest_panel)
+    header_frame.pack(side=tk.TOP, fill=tk.X, padx=10, pady=10)
+
+    button_logout = tk.Button(header_frame, text="Выход", command=self.__logout)
+    button_logout.pack(side=tk.RIGHT, padx=10)
+
+    # Пример элементов рабочей панели (можно добавить больше)
+    button_print_data = tk.Button(header_frame, text="Показать данные пользователя", command=lambda: messagebox.showinfo(
+       "Информация", 
+       f"Вы Гость\nЛогин: {self.__current_user["login"]},\nФИО: {self.__current_user["full_name"]}", 
+       icon="info"
+      )
+    )
+    button_print_data.pack(side=tk.RIGHT, padx=10)
+
 
 
