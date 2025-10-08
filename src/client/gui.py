@@ -35,10 +35,7 @@ class GUI_APP:
     # Создание главного окна
     self.__window = tk.Tk()
     self.__window.title("Вход в систему")
-    self.__window.geometry(window_size)  # Увеличил высоту для новой кнопки
-    
-    # self.__login_frame = tk.Frame(self.__window)
-    # self.__admin_panel = tk.Frame(self.__window)
+    self.__window.geometry(window_size)
 
     self.__init_login_panel()
     self.__init_admin_panel()
@@ -47,12 +44,9 @@ class GUI_APP:
     self.__init_guest_panel()
 
 
-
-
   def run(self):
     # Запуск главного цикла
     self.__window.mainloop()
-
 
 
   def __change_frame(self, frame:str):
@@ -98,7 +92,6 @@ class GUI_APP:
           except Exception as e:
             print(e.args)
             exc_str = str(e)
-            # messagebox.showerror("Ошибка", "Ошибка подключения к серверу")
             messagebox.showerror("Ошибка", exc_str)
           
           if res_str == "ok":
@@ -158,8 +151,8 @@ class GUI_APP:
     self.__entry_password.delete(0, tk.END)
 
   def __show_data(self):
-    username = self.__entry_username.get()
-    password = self.__entry_password.get()
+    username: str = self.__entry_username.get()
+    password: str = self.__entry_password.get()
     messagebox.showinfo("Проверка", f"Вы ввели:\nЛогин: {username},\nПароль: {password}", icon="info")
     
   def __passwd_check_correct(self, password: str) -> bool:
@@ -169,9 +162,15 @@ class GUI_APP:
     special characters, and numbers} and password len >= 8. 
     And returns False otherwise.
     """
-    regex: str = "^[a-zA-Z" + str(punctuation) + "0-9]"
-    pattern = re.compile(regex)
-    return ( (pattern.search(password) is not None) and (len(password) >= 8) )
+    regex_list: list = ["^[a-z]", "^[A-Z]", f"^[{str(punctuation)}]", "^[0-9]"]
+    regex_flag: bool = True
+    for regex in regex_list: 
+      pattern = re.compile(regex)
+      if pattern.search(password) is None:
+        regex_flag = False
+        break
+
+    return ( regex_flag and (len(password) >= 8) )
   
   def __login_check_correct(self, login: str) -> bool:
     """
