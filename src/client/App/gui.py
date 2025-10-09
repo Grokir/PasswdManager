@@ -7,6 +7,9 @@ from tkinter import messagebox, ttk
 import re
 from string import punctuation
 
+import time
+import threading 
+
 from App.receiver import Receiver
 
 
@@ -33,6 +36,8 @@ class GUI_APP:
     "admin_tree2":  False,
     "su_tree":      False
   }
+
+  __cnt_attempt: int  = 0
 
   def __init__(self, window_size:str = "800x600") -> None:
     # Создание главного окна
@@ -75,7 +80,7 @@ class GUI_APP:
     panel.pack(fill=tk.BOTH, expand=True)
 
 
-  def __login(self):
+  def __login(self, login_button):
     username: str = self.__entry_username.get()
     password: str = self.__entry_password.get()
     
@@ -103,6 +108,8 @@ class GUI_APP:
             self.__change_frame(str(self.__current_user["role"]))
           else:
             messagebox.showerror("Ошибка", res_str)
+            self.__cnt_attempt += 1
+            
         else:
           messagebox.showerror("Ошибка", 
             "Некорректный пароль! Пароль должен быть длиной не менее 8 символов и содержать символы A-Z, a-z, 0-9 и спец. символы"
@@ -114,6 +121,19 @@ class GUI_APP:
 
     else:
       messagebox.showerror("Ошибка", "Пожалуйста, введите логин и пароль")
+    
+    if self.__cnt_attempt < 3 and self.__cnt_attempt > 0:
+      messagebox.showerror("Ошибка", f"Неверные данные. Осталось попыток: {3 - self.__cnt_attempt}")
+    else:
+      minutes: int = 5
+      messagebox.showerror("Блокировка", f"Превышено количество попыток. Доступ заблокирован на {minutes} минут.")
+      login_button.config(state="disabled")  # Блокируем кнопку
+      # Фоновая задержка
+      def unlock():
+        time.sleep(minutes * 60)
+        login_button.config(state="normal")
+        self.__cnt_attempt = 0 
+      threading.Thread(target=unlock).start()
     
 
   def __cancel(self):
@@ -210,7 +230,7 @@ class GUI_APP:
     self.__entry_password .pack(side=tk.RIGHT, pady=5)
 
     # Кнопки
-    button_login:   tk.Button = tk.Button(buttons_frame, text="Войти", command=self.__login)
+    button_login:   tk.Button = tk.Button(buttons_frame, text="Войти", command=lambda: self.__login(button_login))
     button_login.pack(side=tk.LEFT, padx=10, pady=10)
     
     # Новая кнопка для демонстрации получения данных
