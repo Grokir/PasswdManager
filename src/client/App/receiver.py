@@ -1,7 +1,10 @@
+from sys import path as sys_path
+sys_path.append("../App")
+
+
 import requests
-# from requests import Response
 import json
-from config import HOST, PORT
+from App.config import HOST, PORT
 
 
 class Receiver:

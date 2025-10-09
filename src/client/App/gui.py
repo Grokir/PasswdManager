@@ -1,10 +1,13 @@
+from sys import path as sys_path
+sys_path.append("../App")
+
 import tkinter as tk
 from tkinter import messagebox, ttk
 
 import re
 from string import punctuation
 
-from receiver import Receiver
+from App.receiver import Receiver
 
 
 class GUI_APP:

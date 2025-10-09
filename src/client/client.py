@@ -1,3 +1,6 @@
+from sys import path as sys_path
+sys_path.append("App")
+
 from App.gui import GUI_APP
 
 
