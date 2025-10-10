@@ -106,6 +106,7 @@ class GUI_APP:
             messagebox.showinfo("Успех", f"Вход выполнен для пользователя: {username}")
             self.__current_user["password"] = password
             self.__change_frame(str(self.__current_user["role"]))
+            self.__cnt_attempt = 0
           else:
             messagebox.showerror("Ошибка", res_str)
             self.__cnt_attempt += 1
@@ -124,7 +125,7 @@ class GUI_APP:
     
     if self.__cnt_attempt < 3 and self.__cnt_attempt > 0:
       messagebox.showerror("Ошибка", f"Неверные данные. Осталось попыток: {3 - self.__cnt_attempt}")
-    else:
+    elif self.__cnt_attempt >= 3:
       minutes: int = 5
       messagebox.showerror("Блокировка", f"Превышено количество попыток. Доступ заблокирован на {minutes} минут.")
       login_button.config(state="disabled")  # Блокируем кнопку
