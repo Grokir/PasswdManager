@@ -18,21 +18,29 @@ class HTTPHandler(BaseHTTPRequestHandler):
         passwd   = DB_PASSWORD
     )
     __logger: Logger = Logger(path_to_logfile=LOG_PATH)
-
+    __pass_type: str = "open"
 
     def __check_password(self, user: User) -> bool:
         bits: int = 16
-        src_passwd: str = user.getPasswd()
+        # src_passwd: str = user.getPasswd()
+        tmp_user: User = self.__uController.get_user_by_login(user.getLogin())
 
-        for i in range(2**bits):
-            bit_str:    str     = f"{i:0{bits}b}"
-            byte_str:   bytes   = int(bit_str, 2).to_bytes((bits // 8), 'big')
-            tmp_passwd: bytes   = bytes(src_passwd, encoding="utf-8") + byte_str
-
-            user.setPasswd(hash.hash_passwd(tmp_passwd))
-           
-            if self.__uController.check_user(user):
+        if tmp_user.getLogin() != "":
+            if tmp_user.getPasswd() == user.getPasswd():
                 return True
+            
+            for i in range(2**bits):
+                bit_str:    str     = f"{i:0{bits}b}"
+                byte_str:   bytes   = int(bit_str, 2).to_bytes((bits // 8), 'big')
+                tmp_passwd: bytes   = bytes(user.getPasswd(), encoding="utf-8") + byte_str
+                
+                if hash.hash_passwd_SHAKE256(tmp_passwd) == tmp_user.getPasswd():
+                    return True
+
+                # user.setPasswd(hash.hash_passwd(tmp_passwd))
+            
+                # if self.__uController.check_user(user):
+                #     return True
 
         return False
     
@@ -45,7 +53,7 @@ class HTTPHandler(BaseHTTPRequestHandler):
             bit_str = f"{i:0{bits}b}"
             byte_str = int(bit_str, 2).to_bytes((bits // 8), 'big')
             tmp_passwd = bytes(password, encoding="utf-8") + byte_str
-            hash_password = hash.hash_passwd(tmp_passwd)
+            hash_password = hash.hash_passwd_SHAKE256(tmp_passwd)
             user.setPasswd(hash_password)
            
             if self.__uController.check_user(user):
@@ -54,10 +62,26 @@ class HTTPHandler(BaseHTTPRequestHandler):
         return None
     
     def __hash_password(self, src_password: str) -> str:
-        salt:           bytes   = hash.gen_salt()
-        salted_passwd:  bytes   = bytes(src_password, encoding="utf-8") + salt
+        modified_passwd: str     = src_password
 
-        return hash.hash_passwd(salted_passwd)
+        match self.__pass_type:
+            case "open":
+                modified_passwd = src_password
+            case "shake256":
+                salt:            bytes  = hash.gen_salt()
+                salted_passwd:   bytes  = bytes(src_password, encoding="utf-8") + salt
+                modified_passwd         = hash.hash_passwd_SHAKE256(salted_passwd)
+            case "sha2-256":
+                salt:            bytes  = hash.gen_salt()
+                salted_passwd:   bytes  = bytes(src_password, encoding="utf-8") + salt
+                modified_passwd         = hash.hash_passwd_SHA256(salted_passwd)
+
+            case "sha3-256":
+                salt:            bytes  = hash.gen_salt()
+                salted_passwd:   bytes  = bytes(src_password, encoding="utf-8") + salt
+                modified_passwd         = hash.hash_passwd_SHA3_256(salted_passwd)
+                
+        return modified_passwd
     
 
     def __set_response(self, resp_code:int=200):
@@ -192,11 +216,14 @@ class HTTPHandler(BaseHTTPRequestHandler):
     def do_PATCH(self):
         message = {}
         response_code = 200
-        print("\n\n[PATCH]")
+        print("\n\n[PATCH]")        
+
+        # /chg_type_pass
+
         if self.headers['content-type'] == "application/json":
             data_length:int = int(self.headers['content-length'])
             json_data: dict = dict(json.loads(self.rfile.read(data_length)))
-            upd_data:  dict = json_data["upd_data"]
+            
 
             user: User = User(
                 username=json_data["login"],
@@ -207,38 +234,55 @@ class HTTPHandler(BaseHTTPRequestHandler):
 
             if (self.__check_password(user)):
                 self.__logger.send(f"User verify SUCCESS")
-
+                
                 user = self.__uController.get_user_by_login(user.getLogin())
-                if user.getRole() == "admin" or user.getLogin() == upd_data["login"]:
-                    
-                    if self.__uController.update_password(
-                        upd_data["login"],
-                        self.__hash_password( upd_data["new_password"] )
-                    ):
-                        message = {
-                            "status":"ok"
-                        }
-
-                        self.__logger.send(
-                            f"User with login '{user.getLogin()}' successful update password for '{upd_data["login"]}' to '{upd_data["new_password"]}'"
-                        )
+                
+                if self.path in ["/", "/chg_type_pass"]:
+                    if self.path == "/chg_type_pass":
+                        if user.getRole() == "admin":
+                            self.__pass_type = json_data["pass_type"]
+                            message = {
+                                "status":"ok"
+                            }
+                            self.__logger.send(
+                                f"User with login '{user.getLogin()}' successful update password secure type to '{self.__pass_type}'"
+                            )
+                        else:
+                            message = {
+                                "status":"error",
+                                "message":"access denied to update data"
+                            }
+                            response_code = 400
+                            self.__logger.send(f"Update FAIL: access denied to update data")
                     else:
-                        message = {
-                            "status":"error",
-                            "message":"update password is fail"
-                        }
-                        self.__logger.send(
-                            f"User with login '{user.getLogin()}' failure update password for '{upd_data["login"]}' from '{upd_data["old_password"]}' to '{upd_data["new_password"]}'"
-                        )
-                else:
-                    message = {
-                        "status":"error",
-                        "message":"access denied to update data"
-                    }
-                    response_code = 400
-                    self.__logger.send(f"Update FAIL: access denied to update data")
+                        upd_data: dict = json_data["upd_data"]
+                        if user.getRole() == "admin" or user.getLogin() == upd_data["login"]:
+                            if self.__uController.update_password(
+                                upd_data["login"],
+                                self.__hash_password( upd_data["new_password"] )
+                            ):
+                                message = {
+                                    "status":"ok"
+                                }
 
-
+                                self.__logger.send(
+                                    f"User with login '{user.getLogin()}' successful update password for '{upd_data["login"]}' to '{upd_data["new_password"]}'"
+                                )
+                            else:
+                                message = {
+                                    "status":"error",
+                                    "message":"update password is fail"
+                                }
+                                self.__logger.send(
+                                    f"User with login '{user.getLogin()}' failure update password for '{upd_data["login"]}' from '{upd_data["old_password"]}' to '{upd_data["new_password"]}'"
+                                )
+                        else:
+                            message = {
+                                "status":"error",
+                                "message":"access denied to update data"
+                            }
+                            response_code = 400
+                            self.__logger.send(f"Update FAIL: access denied to update data")
 
             else:
                 message = {

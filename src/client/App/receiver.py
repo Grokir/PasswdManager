@@ -71,5 +71,14 @@ class Receiver:
       return res["message"]
     
     return res["status"]
+  
+  def change_password_secure(self, dataJSON:dict) -> str:
+    resp: requests.Response = requests.patch(f"http://{HOST}:{PORT}/chg_type_pass", json=dataJSON)
+    res:  dict = resp.json()
+    
+    if res["status"] == "error":
+      return res["message"]
+    
+    return res["status"]
 
 

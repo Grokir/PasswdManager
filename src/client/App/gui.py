@@ -431,7 +431,56 @@ class GUI_APP:
     button_cancel = tk.Button(buttons_frame, text="Отмена", command=change_window.destroy)
     button_cancel.pack(side=tk.RIGHT)
 
+  def __admin_chg_password_secure(self):
+    # Создаем новое окно
+    change_window: tk.Toplevel = tk.Toplevel(self.__window)
+    change_window.title("Изменение защиты пароля")
+    change_window.geometry("500x250")
+    change_window.resizable(False, False)
 
+    # Фрейм для формы внутри окна
+    frame:            tk.Frame = tk.Frame(change_window)
+    frame        .pack(pady=20, padx=20)
+    radio_frame:      tk.Frame = tk.Frame(frame)
+    radio_frame  .pack(side=tk.TOP, fill=tk.X)
+    buttons_frame:    tk.Frame = tk.Frame(frame)
+    buttons_frame.pack(side=tk.TOP, fill=tk.X)
+
+    secure_values:dict = {
+      "Хранение в открытом виде": "open",
+      "Хэш из SHA-2: SHA256":     "sha2-256",
+      "Хэш из SHA-3: SHA256":     "sha3-256",
+      "Хэш из SHA-3: SHAKE256":   "shake256",
+    }
+
+    selected_var = tk.StringVar(radio_frame) 
+    for (text, value) in secure_values.items(): 
+      tk.Radiobutton(radio_frame, text = text, variable = selected_var, 
+          value = value).pack(side = tk.TOP, ipady = 5) 
+
+    def change(window):
+
+      try:
+        result: str = self.__receiver.change_password_secure({
+          "login":      self.__current_user["login"],
+          "password":   self.__current_user["password"],
+          "pass_type":  selected_var.get()
+        })
+        if result == "ok":
+          messagebox.showinfo("Успех", "Защита пароля изменена")
+
+        else:
+          messagebox.showerror("Ошибка", result)
+      except Exception as e:
+        messagebox.showerror("Ошибка", f"Не удалось изменить защиту пароля: {e}")
+
+    # Кнопка удаления пользователя
+    button_change = tk.Button(buttons_frame, text="Применить", command=lambda: change(change_window))
+    button_change.pack(side=tk.LEFT)
+
+    # Кнопка отмены
+    button_cancel = tk.Button(buttons_frame, text="Отмена", command=change_window.destroy)
+    button_cancel.pack(side=tk.RIGHT)
 
   def __admin_chg_passwd_window(self):
     # Создаем новое окно
@@ -751,6 +800,11 @@ class GUI_APP:
       user_data_buttons_frame, text="Удалить пользователя", command=self.__admin_del_user_window
     )
     button_del_user.pack(side=tk.LEFT, pady=10)
+
+    button_chg_hash: tk.Button             = tk.Button(
+      user_data_buttons_frame, text="Изменить защиту пароля", command=self.__admin_chg_password_secure
+    )
+    button_chg_hash.pack(side=tk.LEFT, pady=10)
 
 
 
