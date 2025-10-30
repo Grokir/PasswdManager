@@ -43,3 +43,5 @@ def hash_passwd_SHA3_256(password:bytes) -> str:
   sha3_256: SHA3_256_Hash = SHA3_256.new(password)
   return sha3_256.hexdigest()
 
+
+HASH_TYPE: str = "open"

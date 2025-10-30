@@ -18,7 +18,7 @@ class HTTPHandler(BaseHTTPRequestHandler):
         passwd   = DB_PASSWORD
     )
     __logger: Logger = Logger(path_to_logfile=LOG_PATH)
-    __pass_type: str = "open"
+    
 
     def __check_password(self, user: User) -> bool:
         bits: int = 16
@@ -36,7 +36,16 @@ class HTTPHandler(BaseHTTPRequestHandler):
                 
                 if hash.hash_passwd_SHAKE256(tmp_passwd) == tmp_user.getPasswd():
                     return True
+                
 
+                if hash.hash_passwd_SHA256(tmp_passwd)  == tmp_user.getPasswd():
+                    return True
+                
+
+                if hash.hash_passwd_SHA3_256(tmp_passwd) == tmp_user.getPasswd():
+                    return True
+
+                
                 # user.setPasswd(hash.hash_passwd(tmp_passwd))
             
                 # if self.__uController.check_user(user):
@@ -63,8 +72,8 @@ class HTTPHandler(BaseHTTPRequestHandler):
     
     def __hash_password(self, src_password: str) -> str:
         modified_passwd: str     = src_password
-
-        match self.__pass_type:
+        tp: str = hash.HASH_TYPE
+        match tp:
             case "open":
                 modified_passwd = src_password
             case "shake256":
@@ -240,12 +249,12 @@ class HTTPHandler(BaseHTTPRequestHandler):
                 if self.path in ["/", "/chg_type_pass"]:
                     if self.path == "/chg_type_pass":
                         if user.getRole() == "admin":
-                            self.__pass_type = json_data["pass_type"]
+                            hash.HASH_TYPE = json_data["pass_type"]
                             message = {
                                 "status":"ok"
                             }
                             self.__logger.send(
-                                f"User with login '{user.getLogin()}' successful update password secure type to '{self.__pass_type}'"
+                                f"User with login '{user.getLogin()}' successful update password secure type to '{hash.HASH_TYPE}'"
                             )
                         else:
                             message = {
@@ -274,7 +283,7 @@ class HTTPHandler(BaseHTTPRequestHandler):
                                     "message":"update password is fail"
                                 }
                                 self.__logger.send(
-                                    f"User with login '{user.getLogin()}' failure update password for '{upd_data["login"]}' from '{upd_data["old_password"]}' to '{upd_data["new_password"]}'"
+                                    f"User with login '{user.getLogin()}' failure update password for '{upd_data["login"]}' to '{upd_data["new_password"]}'"
                                 )
                         else:
                             message = {
